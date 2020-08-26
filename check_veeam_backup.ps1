@@ -104,11 +104,9 @@ try {
      }
    }
    if ($failed -eq $true){
-     Plugin-Output $NagiosCritical "Backups failed in job $JobName" ($output | out-String)
-     #Plugin-Exit $NagiosCritical 
+     Plugin-Exit $NagiosCritical "Backups failed in job $JobName" ($output | out-String)
    } else {
-     #Plugin-Exit $NagiosOK "No Backups failed in job: $JobName"
-     Plugin-Output $NagiosOK "No Backups failed in job: $JobName" ($output | out-String)
+     Plugin-Exit $NagiosOK "No Backups failed in job: $JobName" ($output | out-String)
    }
   }
 } catch {
