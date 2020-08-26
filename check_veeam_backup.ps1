@@ -8,7 +8,7 @@ check_veeam_backup -Mode <job_status,host_backup>
 .PARAMETER Mode
 Choose between two modes:
  job_status: Check if the given job was successful. (Default)
- host_backup: Check if the last backup of the hosts in the job are corrupted or inconsistent.
+ host_backup: Check if the last backup of the hosts in the job are corrupted or inconsistent. 
 . PARAMETER JobName
 Name of the VEEAM Backup Job
 . PARAMETER days_warning
@@ -35,16 +35,16 @@ try {
     Plugin-Exit $NagiosUnknown "Could not load VEEAM Backup SnapIn: $error"
 }
 
-try {
-
-  if ($Mode -eq 'job_status') {
-
-    $job = Get-VBRJob -Name "$JobName"
+try { 
+ 
+  if ($Mode -eq 'job_status') { 
+ 
+    $job = Get-VBRJob -Name "$JobName" 
 
     if ($job.IsRunning -eq $true ) {
       Plugin-Exit $NagiosOK "Job is currently running: $JobName"
     }
-
+ 
     $n = Get-Date -Format "yyyy-MM-dd"
     $l = $job.LatestRunLocal
     $ts = (New-TimeSpan -Start $l -End $n).Days
@@ -68,29 +68,31 @@ try {
 }
 
 try {
+  if ($verbose)
+  {
+    Write-Host "Mode=$Mode"
+  }
   if ($Mode -eq 'host_backup')
   {
    [Array]$output = @()
 
    $bkp_names = Get-VBRBackup -Name "$JobName" | Get-VBRRestorePoint -Name * | Select-Object Name -Unique
-
    if ($verbose)
    {
-    Write-Debug $bkp_names
+    Write-Host $bkp_names
    }
 
    ForEach($n in $bkp_names)
    {
-
      $bkp = Get-VBRRestorePoint -Name $n.Name | Sort-Object –Property CreationTime –Descending | Select -First 1
      $vm = $bkp.Name
 
      if ($verbose)
      {
       write-Host "VM: $vm"
-      Write-Host "Corrupted: $bkp.IsCorrupted"
-      write-Host "Recheck: $bkp.IsRecheckCorrupted"
-      write-Host "Consistent: $bkp.IsConsistent"
+      Write-Host "Corrupted: $($bkp.IsCorrupted)"
+      write-Host "Recheck: $($bkp.IsRecheckCorrupted)"
+      write-Host "Consistent: $($bkp.IsConsistent)"
 
      }
 
@@ -103,7 +105,7 @@ try {
    }
    if ($failed -eq $true){
      Plugin-Output $NagiosCritical "Backups failed in job $JobName" ($output | out-String)
-     #Plugin-Exit $NagiosCritical
+     #Plugin-Exit $NagiosCritical 
    } else {
      #Plugin-Exit $NagiosOK "No Backups failed in job: $JobName"
      Plugin-Output $NagiosOK "No Backups failed in job: $JobName" ($output | out-String)
@@ -112,4 +114,3 @@ try {
 } catch {
    Plugin-Exit $NagiosUnknown "Get Backup Jobs failed: $error"
 }
-
