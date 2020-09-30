@@ -28,7 +28,7 @@ param(
 
 
 
-. '.\nagios-utils.ps1'
+. "$PSScriptRoot\nagios-utils.ps1"
 
 try {
     Add-PSSnapin VeeamPSSnapin;
