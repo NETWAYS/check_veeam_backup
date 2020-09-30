@@ -45,6 +45,20 @@ OK: No Backups failed in job: ProdVMs
 e
 ```
 
+## Mode job_all
+
+This mode checks if the all jobs were successful and also you can add filter.
+
+```
+ .\check_veeam_backup.ps1 -Mode job_all -Filter INFRA
+OK: All Jobs are fine...
+```
+```
+ .\check_veeam_backup.ps1 -Mode job_all
+CRITICAL: There are some failed jobs..
+Corrupted/Consistent : TEST
+```
+
 ## Contributing
 
 Feel free to ask questions and open issues. Feedback is always welcome and appreciated.

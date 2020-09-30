@@ -20,14 +20,15 @@ Check if the job is older than the given days
 param(
     [string] $Mode = 'job_status',
     [string] $JobName,
+    [string] $Filter,
     [int]    $days_warning = 3,
     [int]    $days_critical = 5,
     [switch] $Verbose
 )
 
 
-. "$PSScriptRoot\nagios-utils.ps1"
 
+. "$PSScriptRoot\nagios-utils.ps1"
 
 try {
     Add-PSSnapin VeeamPSSnapin;
@@ -109,6 +110,64 @@ try {
      Plugin-Exit $NagiosOK "No Backups failed in job: $JobName" ($output | out-String)
    }
   }
+} catch {
+   Plugin-Exit $NagiosUnknown "Get Backup Jobs failed: $error"
+}
+
+try {
+  if ($verbose)
+  {
+    Write-Host "Mode=$Mode"
+  }
+  if ($Mode -eq 'job_all')
+  {
+   [Array]$outputOK = @()
+   [Array]$outputCRT = @()
+
+   $jobs = Get-VBRJob | ?{$_.JobType -eq "Backup"}
+   Foreach ($Job in $jobs)
+    {
+
+    $bkp = Get-VBRJob -Name $Job.Name | Sort-Object –Property CreationTime –Descending | Select -First 1
+    $Jobname = $bkp.name
+    if ($Filter)
+        {
+           $JobNew = "$Jobname" | Select-String -Pattern "$Filter" -CaseSensitive 
+           if ($Jobname -eq $JobNew)
+           {
+            if ( $Job.FindLastSession().result -eq 'success') 
+                {
+                $outputOK += "`nSuccess : $Jobname"
+                } 
+                else {
+                     $outputCRT += "`nCorrupted/Consistent : $Jobname"
+                     $failed = $true
+                     }
+           }
+        }
+    else 
+        {
+            if ( $Job.FindLastSession().result -eq 'success') 
+                {
+                $outputOK += "`nSuccess : $Jobname"
+                } 
+                else {
+                     $outputCRT += "`nCorrupted/Consistent : $Jobname"
+                     $failed = $true
+                     }
+        }
+     
+    }
+
+    if ($failed -eq $true)
+        {
+            Plugin-Exit $NagiosCritical "There are some failed jobs.." ($outputCRT | out-String)
+            
+        }
+    else {
+            Plugin-Exit $NagiosOK "All Jobs are fine..." ($outputOK | out-String)
+        }
+ }
 } catch {
    Plugin-Exit $NagiosUnknown "Get Backup Jobs failed: $error"
 }
