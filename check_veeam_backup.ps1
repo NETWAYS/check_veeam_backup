@@ -4,11 +4,12 @@ check_veeam_backup
 .SYNOPSIS
 Checks the backup
 .SYNTAX
-check_veeam_backup -Mode <job_status,host_backup>
+check_veeam_backup -Mode <job_status,host_backup,all_jobs>
 .PARAMETER Mode
-Choose between two modes:
+Choose between three modes:
  job_status: Check if the given job was successful. (Default)
- host_backup: Check if the last backup of the hosts in the job are corrupted or inconsistent. 
+ host_backup: Check if the last backup of the hosts in the job are corrupted or inconsistent.
+ all_jobs: Check if all jobs were successful. Prints the job with the worst status first.
 . PARAMETER JobName
 Name of the VEEAM Backup Job
 . PARAMETER days_warning
@@ -35,35 +36,53 @@ try {
     Plugin-Exit $NagiosUnknown "Could not load VEEAM Backup SnapIn: $error"
 }
 
-try { 
- 
-  if ($Mode -eq 'job_status') { 
- 
-    $job = Get-VBRJob -Name "$JobName" 
+try {
 
-    if ($job.IsRunning -eq $true ) {
-      Plugin-Exit $NagiosOK "Job is currently running: $JobName"
+    If ($Mode -eq 'all_jobs') {
+        $jobs = Get-VBRJob
     }
- 
-    $n = Get-Date -Format "yyyy-MM-dd"
-    $l = $job.LatestRunLocal
-    $ts = (New-TimeSpan -Start $l -End $n).Days
-
-    if ($verbose){
-      write-Host "DayDIFF $ts Lastjob $l NOW: $n"
+    ElseIf ($Mode -eq 'job_status') {
+        $jobs = Get-VBRJob -Name "$JobName"
     }
 
-    if ( $job.FindLastSession().result -ne 'success') {
-      Plugin-Exit $NagiosCritical "Last Job result failed: $JobName"
-    } Elseif ( $ts -gt $days_critical ){
-      Plugin-Exit $NagiosCritical "Last job run is $ts days old: $JobName"
-    } Elseif ( $ts -gt $days_warning ){
-      Plugin-Exit $NagiosWarning "Last job run is $ts days old: $JobName"
-    } else {
-      Plugin-Exit $NagiosOK "Last Job result was successful: $JobName"
+    $msg = @()
+
+    ForEach ($job In $jobs) {
+        $jobname = $job.Name
+
+        $n = Get-Date -Format "yyyy-MM-dd"
+        $l = $job.LatestRunLocal
+        $ts = (New-TimeSpan -Start $l -End $n).Days
+
+        if ($verbose){
+          write-Host "DayDIFF $ts Lastjob $l NOW: $n"
+        }
+
+        if ($job.IsRunning -eq $true) {
+            $status = ($status, $NagiosOK | Measure -Max).Maximum
+            $msg += "Job is currently running: $jobname"
+        }
+        elseif ( $job.FindLastSession().result -ne 'success') {
+            $status = ($status,$NagiosCritical | Measure -Max).Maximum
+            $msg += "Last job result failed: $jobname"
+        }
+        elseif ( $ts -gt $days_critical ) {
+            $status = ($status,$NagiosCritical | Measure -Max).Maximum
+            $msg += "Last job run is $ts days old: $jobname"
+        }
+        elseif ( $ts -gt $days_warning ) {
+            $status = ($status,$NagiosWarning | Measure -Max).Maximum
+            $msg += "Last job run is $ts days old: $jobname"
+        }
+        else {
+            $status = ($status,$NagiosOK | Measure -Max).Maximum
+            $msg += "Last job result was successful: $jobname"
+        }
+
     }
-  }
-} catch {
+    Plugin-Exit $status "$($msg -join ' - ')"
+}
+catch {
     Plugin-Exit $NagiosUnknown "Get-VBRJob failed: $error"
 }
 

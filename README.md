@@ -27,6 +27,18 @@ This mode checks if the job was successful and if the last run is older then the
 OK: Last Job result was successful: ProdVMs
 ```
 
+## Mode all_jobs
+
+This mode checks all jobs if they were successful. You can use the day thresholds like above.
+
+```
+.\check_veeam_backup.ps1 -Mode "all_jobs"
+OK: Job is currently running: DevVMs - Last Job result was successful: ProdVMs - Job is currently running: TestVMs
+```
+
+Prints the job with the worst status first. If one or more jobs are WARNING (or CRITICAL), the all over status is
+WARNING (or CRITICAL).
+
 ## Mode host_backup
 
 This mode checks if the backups of hosts are corrupted or inconsistent.
